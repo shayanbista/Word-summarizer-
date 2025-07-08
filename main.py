@@ -16,12 +16,15 @@ import seaborn as sns
 import os
 import openai
 import getpass
-from fileProcessor import extract_pdf_content
+
 from sentence_transformers import SentenceTransformer
 from langchain_openai import OpenAIEmbeddings
 from langchain_chroma import Chroma
-from vector_store import vectorStore
-from fileProcessor import extract_images_from_pdf
+from vector_store import Store
+
+
+from fileProcessor import extract_pdf_content
+
 
 def embed_text(text_chunks):
     embeddings = model.encode(text_chunks, convert_to_tensor=True)
@@ -35,8 +38,7 @@ def main():
     Main function showing how to use the enhanced PDF processor
     """
     print("Processing PDF...")
-    file_path = "./pdf files/2.pdf"  
-    
+    file_path = "./pdf files/test.pdf"     
     try:
         # Initialize the splitter
         splitter = RecursiveCharacterTextSplitter(
@@ -49,20 +51,19 @@ def main():
 
         # Call the enhanced processing function
         stats = extract_pdf_content(file_path)
-        print(stats)
 
         # # Split text by page
-        # for page in stats:
-        #     chunks = splitter.split_text(page['text'])
-        #     for i, chunk in enumerate(chunks):
-        #             split_pages.append({
-        #             'page': page['page'],
-        #             'chunk_number': i + 1,
-        #             'text': chunk,
-        #         })
+        for page in stats:
+            chunks = splitter.split_text(page['text'])
+            for i, chunk in enumerate(chunks):
+                    split_pages.append({
+                    'page': page['page'],
+                    'chunk_number': i + 1,
+                    'text': chunk,
+                })
 
 
-        # print(vectorStore((split_pages)))
+        Store((split_pages))
 
     except Exception as e:
         print(f"Error processing PDF: {e}")
