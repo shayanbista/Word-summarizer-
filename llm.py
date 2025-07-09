@@ -1,6 +1,7 @@
 from langchain_openai import ChatOpenAI
 from utils import get_env_variable
 
+
 def get_openai_model() -> ChatOpenAI:
     """
     Returns a LangChain OpenAI LLM instance.

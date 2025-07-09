@@ -30,21 +30,21 @@ def embed_text(text_chunks):
     embeddings = model.encode(text_chunks, convert_to_tensor=True)
     return embeddings
 
+
 # OpenAI API Key
 openai.api_key = "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"
+
 
 def main():
     """
     Main function showing how to use the enhanced PDF processor
     """
     print("Processing PDF...")
-    file_path = "./pdf files/test.pdf"     
+    file_path = "./pdf files/test.pdf"
     try:
         # Initialize the splitter
         splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            separators=["\n\n", "\n", ".", " ", ""]
+            chunk_size=1000, chunk_overlap=200, separators=["\n\n", "\n", ".", " ", ""]
         )
 
         split_pages = []
@@ -54,21 +54,22 @@ def main():
 
         # # Split text by page
         for page in stats:
-            chunks = splitter.split_text(page['text'])
+            chunks = splitter.split_text(page["text"])
             for i, chunk in enumerate(chunks):
-                    split_pages.append({
-                    'page': page['page'],
-                    'chunk_number': i + 1,
-                    'text': chunk,
-                })
-
+                split_pages.append(
+                    {
+                        "page": page["page"],
+                        "chunk_number": i + 1,
+                        "text": chunk,
+                    }
+                )
 
         Store((split_pages))
 
     except Exception as e:
         print(f"Error processing PDF: {e}")
         return
-    
+
 
 if __name__ == "__main__":
     main()
