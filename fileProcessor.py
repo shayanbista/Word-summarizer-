@@ -7,6 +7,7 @@ import numpy as np
 
 try:
     from pdf2image import convert_from_path
+
     PDF2IMAGE_AVAILABLE = True
 except ImportError:
     PDF2IMAGE_AVAILABLE = False
@@ -38,7 +39,7 @@ def is_pie_chart_shape(cnt, chart_region):
         if area == 0:
             return False
         (x, y), radius = cv2.minEnclosingCircle(cnt)
-        circle_area = np.pi * (radius ** 2)
+        circle_area = np.pi * (radius**2)
         circularity = area / circle_area
         if 0.75 < circularity < 1.25:
             return has_pie_sectors(chart_region)
@@ -59,6 +60,7 @@ def detect_bars_in_chart_region(chart_region):
                 bars.append((x, y, w, h))
     return bars
 
+
 def detect_charts_from_page_image(page_image, page_num, output_dir, min_area=10000):
     page_cv = cv2.cvtColor(np.array(page_image), cv2.COLOR_RGB2BGR)
     gray = cv2.cvtColor(page_cv, cv2.COLOR_BGR2GRAY)
@@ -78,7 +80,7 @@ def detect_charts_from_page_image(page_image, page_num, output_dir, min_area=100
         if w < 60 or h < 60 or w > 0.9 * page_cv.shape[1]:
             continue
 
-        chart_region = page_cv[y:y + h, x:x + w]
+        chart_region = page_cv[y : y + h, x : x + w]
         entropy = image_entropy(chart_region)
         if entropy < 2.0:
             continue
@@ -93,24 +95,26 @@ def detect_charts_from_page_image(page_image, page_num, output_dir, min_area=100
 
         # Detect bars only if bar chart
         bars = detect_bars_in_chart_region(chart_region) if chart_type == "bar" else []
-        
+
         # Skip if bar chart has less than 2 bars (not valid)
         if chart_type == "bar" and len(bars) < 2:
-            continue  
+            continue
 
         # Now save image only if all validations passed
         chart_filename = f"page{page_num}_{chart_type}_chart_{i + 1}.png"
         chart_path = os.path.join(output_dir, chart_filename)
         cv2.imwrite(chart_path, chart_region)
 
-        detected_charts.append({
-            "chart_type": chart_type,
-            "chart_path": chart_path,
-            "coordinates": (x, y, w, h),
-            "area": area,
-            "entropy": round(entropy, 2),
-            "detected_bars": bars
-        })
+        detected_charts.append(
+            {
+                "chart_type": chart_type,
+                "chart_path": chart_path,
+                "coordinates": (x, y, w, h),
+                "area": area,
+                "entropy": round(entropy, 2),
+                "detected_bars": bars,
+            }
+        )
 
     return detected_charts
 
@@ -151,61 +155,12 @@ def extract_pdf_content_and_detect_charts(
                 print(f"Error rendering page {page_num + 1}: {e}")
                 continue
 
-        detected_charts = detect_charts_from_page_image(
-            page_image, page_num + 1, image_output_dir
-        )
-        page_dict["detected_charts"] = detected_charts
-        print(f"Detected {len(detected_charts)} charts.")
+        # detected_charts = detect_charts_from_page_image(
+        #     page_image, page_num + 1, image_output_dir
+        # )
+        # page_dict["detected_charts"] = detected_charts
+        # print(f"Detected {len(detected_charts)} charts.")
         results.append(page_dict)
 
     doc.close()
     return results
-
-
-def analyze_results(results):
-    print("\n" + "=" * 50)
-    print("DETECTION RESULTS SUMMARY")
-    print("=" * 50)
-
-    total_charts = 0
-    total_bars = 0
-
-    for page in results:
-        print(f"\nPage {page['page']}:")
-        charts = page["detected_charts"]
-        print(f"  Charts detected: {len(charts)}")
-        total_charts += len(charts)
-
-        for chart in charts:
-            bar_count = len(chart["detected_bars"])
-            print(f"    - {chart['chart_path']} ({chart['chart_type']}): {bar_count} bars")
-            total_bars += bar_count
-
-    print(f"\nTOTAL SUMMARY:")
-    print(f"  Total charts detected: {total_charts}")
-    print(f"  Total bars detected: {total_bars}")
-
-
-# === Run the script ===
-
-results = extract_pdf_content_and_detect_charts(
-    "./pdf files/piechart.pdf",
-    save_images=True,
-    image_output_dir="output_charts",
-    use_pdf2image=True
-)
-
-analyze_results(results)
-
-print("\n" + "=" * 50)
-print("DETAILED RESULTS")
-print("=" * 50)
-for page in results:
-    print(f"\nPage {page['page']}:")
-    for chart in page["detected_charts"]:
-        print(f"  Chart: {chart['chart_path']}")
-        print(f"    Type: {chart['chart_type']}")
-        print(f"    Area: {chart['area']}")
-        print(f"    Entropy: {chart['entropy']}")
-        print(f"    Coords: {chart['coordinates']}")
-        print(f"    Bars: {chart['detected_bars']}")
