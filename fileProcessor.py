@@ -1,16 +1,18 @@
-import os
+import fitz
+from PIL import Image
 import io
-import re
-import fitz  # PyMuPDF
+import os
 import cv2
 import numpy as np
-from PIL import Image
 import pytesseract
 import easyocr
+import re
+from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 
-# Global variables for OCR configuration
 USE_EASYOCR = True
 EASYOCR_READER = None
+
 
 def initialize_ocr(use_easyocr=True):
     global USE_EASYOCR, EASYOCR_READER
@@ -18,28 +20,6 @@ def initialize_ocr(use_easyocr=True):
     if use_easyocr:
         EASYOCR_READER = easyocr.Reader(["en"])
 
-def detect_bar_charts_simple(image):
-    if isinstance(image, Image.Image):
-        img_array = np.array(image)
-    else:
-        img_array = image
-
-    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    edges = cv2.Canny(blurred, 50, 150)
-
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    chart_regions = []
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        if area > 10000:
-            x, y, w, h = cv2.boundingRect(contour)
-            aspect_ratio = w / h
-            if 0.3 < aspect_ratio < 5.0 and w > 100 and h > 100:
-                chart_regions.append((x, y, w, h, "bar_chart"))
-
-    return chart_regions
 
 def detect_charts_in_image(image):
     if isinstance(image, Image.Image):
@@ -63,6 +43,31 @@ def detect_charts_in_image(image):
 
     return chart_regions
 
+
+def detect_bar_charts_simple(image):
+    if isinstance(image, Image.Image):
+        img_array = np.array(image)
+    else:
+        img_array = image
+
+    gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, 50, 150)
+
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    chart_regions = []
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area > 10000:
+            x, y, w, h = cv2.boundingRect(contour)
+            aspect_ratio = w / h
+            if 0.3 < aspect_ratio < 5.0 and w > 100 and h > 100:
+                chart_regions.append((x, y, w, h))
+
+    return chart_regions
+
+
 def extract_text_from_chart(image, region=None):
     global USE_EASYOCR, EASYOCR_READER
 
@@ -84,20 +89,30 @@ def extract_text_from_chart(image, region=None):
         results = EASYOCR_READER.readtext(denoised)
         for bbox, text, confidence in results:
             if confidence > 0.5:
-                extracted_text.append({"text": text.strip(), "bbox": bbox, "confidence": confidence})
+                extracted_text.append(
+                    {"text": text.strip(), "bbox": bbox, "confidence": confidence}
+                )
     else:
         data = pytesseract.image_to_data(denoised, output_type=pytesseract.Output.DICT)
         for i in range(len(data["text"])):
             if int(data["conf"][i]) > 30:
                 text = data["text"][i].strip()
                 if text:
-                    extracted_text.append({
-                        "text": text,
-                        "bbox": (data["left"][i], data["top"][i], data["width"][i], data["height"][i]),
-                        "confidence": data["conf"][i],
-                    })
+                    extracted_text.append(
+                        {
+                            "text": text,
+                            "bbox": (
+                                data["left"][i],
+                                data["top"][i],
+                                data["width"][i],
+                                data["height"][i],
+                            ),
+                            "confidence": data["conf"][i],
+                        }
+                    )
 
     return extracted_text
+
 
 def classify_chart_text(text_data):
     classified = {
@@ -121,6 +136,7 @@ def classify_chart_text(text_data):
 
     return classified
 
+
 def extract_chart_data_values(chart_data):
     values = []
     labels = []
@@ -139,8 +155,11 @@ def extract_chart_data_values(chart_data):
     return {
         "values": values,
         "labels": labels,
-        "title": (classified_text["titles"][0]["text"] if classified_text["titles"] else None),
+        "title": (
+            classified_text["titles"][0]["text"] if classified_text["titles"] else None
+        ),
     }
+
 
 def extract_pdf_content(
     pdf_path,
@@ -171,7 +190,11 @@ def extract_pdf_content(
 
             chart_regions = detect_charts_in_image(image)
             bar_regions = detect_bar_charts_simple(image)
-            all_regions = chart_regions + [r[:4] for r in bar_regions]
+
+            all_regions = chart_regions[:]
+            for bar_region in bar_regions:
+                if bar_region not in all_regions:
+                    all_regions.append(bar_region)
 
             page_dict["chart_regions"] = all_regions
 
@@ -187,7 +210,9 @@ def extract_pdf_content(
 
                 chart_text = extract_text_from_chart(chart_img)
                 classified_text = classify_chart_text(chart_text)
-                chart_values = extract_chart_data_values({"classified_text": classified_text})
+                chart_values = extract_chart_data_values(
+                    {"classified_text": classified_text}
+                )
 
                 chart_data = {
                     "region": region,
@@ -207,6 +232,7 @@ def extract_pdf_content(
     doc.close()
     return results
 
+
 def process_pdf_with_charts(pdf_path, output_dir="output_charts", use_easyocr=True):
     results = extract_pdf_content(
         pdf_path,
@@ -217,32 +243,42 @@ def process_pdf_with_charts(pdf_path, output_dir="output_charts", use_easyocr=Tr
     )
     return results
 
-def print_chart_summary(results):
-    for page_result in results:
-        print(f"\nPage {page_result['page']}:")
-        print(f"Regular text length: {len(page_result['text'])}")
-        if "charts" in page_result:
-            print(f"Found {len(page_result['charts'])} charts")
-            for i, chart in enumerate(page_result["charts"]):
-                print(f"\nChart {i + 1}:")
-                print(f"  Region: {chart['region']}")
-                print(f"  Extracted text items: {len(chart['raw_text'])}")
-                classified = chart["classified_text"]
-                if classified["titles"]:
-                    print(f"  Title: {classified['titles'][0]['text']}")
-                if classified["values"]:
-                    print(f"  Values: {[item['text'] for item in classified['values'][:5]]}")
-                if classified["axis_labels"]:
-                    print(f"  Labels: {[item['text'] for item in classified['axis_labels'][:5]]}")
-                chart_values = extract_chart_data_values(chart)
-                print(f"  Numerical values: {chart_values['values'][:10]}")
-                print(f"  Labels: {chart_values['labels'][:5]}")
 
-# --- Run the processing ---
-results = process_pdf_with_charts(
-    "./pdf files/2.pdf",
-    output_dir="output_charts",
-    use_easyocr=True,
-)
-
-print_chart_summary(results)
+def create_text_image_chunks(results, chunk_size=1000, chunk_overlap=200):
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", ".", " ", ""],
+    )
+    documents = []
+    for page in results:
+        text_chunks = splitter.split_text(page["text"])
+        for i, chunk in enumerate(text_chunks):
+            documents.append(
+                Document(
+                    page_content=chunk,
+                    metadata={
+                        "page": page["page"],
+                        "chunk_index": i,
+                        "has_chart": bool(page["charts"]),
+                    },
+                )
+            )
+        for chart in page["charts"]:
+            chart_text = " ".join([item["text"] for item in chart.get("raw_text", [])])
+            documents.append(
+                Document(
+                    page_content=chart_text,
+                    metadata={
+                        "page": page["page"],
+                        "image_path": chart["image_path"],
+                        "region": chart["region"],
+                        "labels": chart.get("labels"),
+                        "values": chart.get("values"),
+                        "title": chart.get("title"),
+                        "source_pdf": chart["source_pdf"],
+                        "chunk_index": f"chart_{chart['image_path'].split('_')[-1].replace('.png','')}",
+                    },
+                )
+            )
+    return documents
