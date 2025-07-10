@@ -2,15 +2,30 @@ from langchain_core.prompts import MessagesPlaceholder, ChatPromptTemplate
 from llm import get_openai_model
 from fetchFromDb import fetch_chunk_from_db
 
+
 def needs_context(query: str) -> bool:
     research_keywords = [
-        "research", "analyze", "analysis", "report on",
-        "look into", "dive into", "explore", "investigate"
+        "research",
+        "analyze",
+        "analysis",
+        "report on",
+        "look into",
+        "dive into",
+        "explore",
+        "investigate",
     ]
-    domain_keywords = ["industry", "supply chain", "market", "business model", "company", "startup"]
+    domain_keywords = [
+        "industry",
+        "supply chain",
+        "market",
+        "business model",
+        "company",
+        "startup",
+    ]
 
     query_lower = query.lower()
     return any(k in query_lower for k in research_keywords + domain_keywords)
+
 
 def handle_user_input():
     try:
@@ -48,5 +63,6 @@ def handle_user_input():
 
     except Exception as e:
         print("Error:", e)
+
 
 handle_user_input()
