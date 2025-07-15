@@ -20,11 +20,7 @@ def initialize_ocr(use_easyocr=True):
 
 
 def detect_charts_in_image(image):
-    if isinstance(image, Image.Image):
-        img_array = np.array(image)
-    else:
-        img_array = image
-
+    img_array = np.array(image) if isinstance(image, Image.Image) else image
     gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blurred, 50, 150)
@@ -43,15 +39,10 @@ def detect_charts_in_image(image):
 
 
 def detect_bar_charts_simple(image):
-    if isinstance(image, Image.Image):
-        img_array = np.array(image)
-    else:
-        img_array = image
-
+    img_array = np.array(image) if isinstance(image, Image.Image) else image
     gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blurred, 50, 150)
-
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     chart_regions = []
@@ -69,11 +60,7 @@ def detect_bar_charts_simple(image):
 def extract_text_from_chart(image, region=None):
     global USE_EASYOCR, EASYOCR_READER
 
-    if isinstance(image, Image.Image):
-        img_array = np.array(image)
-    else:
-        img_array = image
-
+    img_array = np.array(image) if isinstance(image, Image.Image) else image
     if region:
         x, y, w, h = region
         img_array = img_array[y : y + h, x : x + w]
@@ -138,7 +125,6 @@ def classify_chart_text(text_data):
 def extract_chart_data_values(chart_data):
     values = []
     labels = []
-
     classified_text = chart_data["classified_text"]
 
     for item in classified_text["values"]:
@@ -160,7 +146,7 @@ def extract_chart_data_values(chart_data):
 
 
 def extract_pdf_content(
-    pdf_path,
+    pdf,
     save_images=True,
     image_output_dir="output_charts",
     detect_charts=True,
@@ -171,14 +157,12 @@ def extract_pdf_content(
     if save_images and not os.path.exists(image_output_dir):
         os.makedirs(image_output_dir)
 
-    doc = fitz.open(pdf_path)
+    doc = fitz.open(pdf)
     results = []
 
     for page_num in range(len(doc)):
         page = doc[page_num]
         page_dict = {"page": page_num + 1, "text": page.get_text(), "charts": []}
-
-        print(f"Processing page {page_num + 1}...")
 
         if detect_charts:
             mat = fitz.Matrix(2, 2)
@@ -220,7 +204,7 @@ def extract_pdf_content(
                     "title": chart_values.get("title"),
                     "labels": chart_values.get("labels"),
                     "values": chart_values.get("values"),
-                    "source_pdf": os.path.basename(pdf_path),
+                    "source_pdf": os.path.basename(pdf),
                 }
 
                 page_dict["charts"].append(chart_data)
