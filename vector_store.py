@@ -14,6 +14,6 @@ def Store(pages):
         return False
 
 
-results = vector_store_from_client.similarity_search("page:4", k=3)
+# results = vector_store_from_client.similarity_search("what is piechart", k=3)
 
-print("result", results)
+# print("result", results)

@@ -7,8 +7,6 @@ import numpy as np
 import pytesseract
 import easyocr
 import re
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 USE_EASYOCR = True
 EASYOCR_READER = None
@@ -231,54 +229,3 @@ def extract_pdf_content(
 
     doc.close()
     return results
-
-
-def process_pdf_with_charts(pdf_path, output_dir="output_charts", use_easyocr=True):
-    results = extract_pdf_content(
-        pdf_path,
-        save_images=True,
-        image_output_dir=output_dir,
-        detect_charts=True,
-        use_easyocr=use_easyocr,
-    )
-    return results
-
-
-def create_text_image_chunks(results, chunk_size=1000, chunk_overlap=200):
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
-        separators=["\n\n", "\n", ".", " ", ""],
-    )
-    documents = []
-    for page in results:
-        text_chunks = splitter.split_text(page["text"])
-        for i, chunk in enumerate(text_chunks):
-            documents.append(
-                Document(
-                    page_content=chunk,
-                    metadata={
-                        "page": page["page"],
-                        "chunk_index": i,
-                        "has_chart": bool(page["charts"]),
-                    },
-                )
-            )
-        for chart in page["charts"]:
-            chart_text = " ".join([item["text"] for item in chart.get("raw_text", [])])
-            documents.append(
-                Document(
-                    page_content=chart_text,
-                    metadata={
-                        "page": page["page"],
-                        "image_path": chart["image_path"],
-                        "region": chart["region"],
-                        "labels": chart.get("labels"),
-                        "values": chart.get("values"),
-                        "title": chart.get("title"),
-                        "source_pdf": chart["source_pdf"],
-                        "chunk_index": f"chart_{chart['image_path'].split('_')[-1].replace('.png','')}",
-                    },
-                )
-            )
-    return documents
