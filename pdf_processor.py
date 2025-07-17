@@ -6,6 +6,35 @@ from fileProcessor import extract_pdf_content
 from vector_store import Store
 
 
+# def match_chart_to_figure(chart, figure_data, chart_index):
+#     matched_data = {
+#         "figure_numbers": [],
+#         "figure_titles": [],
+#         "figure_descriptions": [],
+#         "chart_types": [],
+#         "data_mentioned": figure_data.get("data_mentioned", []),
+#     }
+
+#     if len(figure_data["figure_numbers"]) > chart_index:
+#         matched_data["figure_numbers"] = [figure_data["figure_numbers"][chart_index]]
+#     if len(figure_data["figure_titles"]) > chart_index:
+#         matched_data["figure_titles"] = [figure_data["figure_titles"][chart_index]]
+#     if len(figure_data["figure_descriptions"]) > chart_index:
+#         matched_data["figure_descriptions"] = [figure_data["figure_descriptions"][chart_index]]
+
+#     if figure_data["chart_types"]:
+#         if len(figure_data["figure_descriptions"]) > chart_index:
+#             description = figure_data["figure_descriptions"][chart_index].lower()
+#             matched_types = [ct for ct in figure_data["chart_types"] if ct in description]
+#             matched_data["chart_types"] = matched_types if matched_types else [figure_data["chart_types"][0]]
+#         elif len(figure_data["chart_types"]) > chart_index:
+#             matched_data["chart_types"] = [figure_data["chart_types"][chart_index]]
+#         else:
+#             matched_data["chart_types"] = [figure_data["chart_types"][0]]
+
+#     return matched_data
+
+
 def match_chart_to_figure(chart, figure_data, chart_index):
     matched_data = {
         "figure_numbers": [],
@@ -15,22 +44,34 @@ def match_chart_to_figure(chart, figure_data, chart_index):
         "data_mentioned": figure_data.get("data_mentioned", []),
     }
 
-    if len(figure_data["figure_numbers"]) > chart_index:
+    # Match figure number, title, and description based on index
+    if chart_index < len(figure_data["figure_numbers"]):
         matched_data["figure_numbers"] = [figure_data["figure_numbers"][chart_index]]
-    if len(figure_data["figure_titles"]) > chart_index:
-        matched_data["figure_titles"] = [figure_data["figure_titles"][chart_index]]
-    if len(figure_data["figure_descriptions"]) > chart_index:
-        matched_data["figure_descriptions"] = [figure_data["figure_descriptions"][chart_index]]
 
+    if chart_index < len(figure_data["figure_titles"]):
+        matched_data["figure_titles"] = [figure_data["figure_titles"][chart_index]]
+
+    if chart_index < len(figure_data["figure_descriptions"]):
+        matched_data["figure_descriptions"] = [
+            figure_data["figure_descriptions"][chart_index]
+        ]
+
+    # Match chart type from figure description if possible
     if figure_data["chart_types"]:
-        if len(figure_data["figure_descriptions"]) > chart_index:
+        if chart_index < len(figure_data["figure_descriptions"]):
             description = figure_data["figure_descriptions"][chart_index].lower()
-            matched_types = [ct for ct in figure_data["chart_types"] if ct in description]
-            matched_data["chart_types"] = matched_types if matched_types else [figure_data["chart_types"][0]]
-        elif len(figure_data["chart_types"]) > chart_index:
+            matched_types = [
+                ct for ct in figure_data["chart_types"] if ct in description
+            ]
+            matched_data["chart_types"] = (
+                matched_types if matched_types else [figure_data["chart_types"][0]]
+            )
+        elif chart_index < len(figure_data["chart_types"]):
             matched_data["chart_types"] = [figure_data["chart_types"][chart_index]]
         else:
             matched_data["chart_types"] = [figure_data["chart_types"][0]]
+    else:
+        matched_data["chart_types"] = ["chart"]  # Default fallback
 
     return matched_data
 
@@ -47,8 +88,12 @@ def enhance_chart_with_figure_data(chart, page_text, page_number, chart_index=0)
             enhanced_chart["title"] = matched_figure_data["figure_titles"][0]
         enhanced_chart["figure_titles"] = matched_figure_data["figure_titles"]
     if matched_figure_data["figure_descriptions"]:
-        enhanced_chart["figure_descriptions"] = matched_figure_data["figure_descriptions"]
-    enhanced_chart["detected_chart_types"] = matched_figure_data["chart_types"] or ["chart"]
+        enhanced_chart["figure_descriptions"] = matched_figure_data[
+            "figure_descriptions"
+        ]
+    enhanced_chart["detected_chart_types"] = matched_figure_data["chart_types"] or [
+        "chart"
+    ]
     if matched_figure_data["data_mentioned"]:
         enhanced_chart["data_mentioned"] = matched_figure_data["data_mentioned"]
 
@@ -59,7 +104,9 @@ def generate_enhanced_chart_description(chart):
     descriptions = []
 
     if chart.get("figure_numbers"):
-        descriptions.append(f"referenced as {', '.join(['Figure ' + num for num in chart['figure_numbers']])}")
+        descriptions.append(
+            f"referenced as {', '.join(['Figure ' + num for num in chart['figure_numbers']])}"
+        )
     if chart.get("figure_titles"):
         descriptions.append(f"captioned: {'; '.join(chart['figure_titles'])}")
     if chart.get("detected_chart_types"):
@@ -91,11 +138,26 @@ def generate_enhanced_chart_description(chart):
     if chart.get("region"):
         descriptions.append(f"located in region {chart['region']}")
 
-    descriptions.extend([
-        "graph", "plot", "visualization", "data", "figure", "chart", "diagram",
-        "illustration", "statistical", "analysis", "comparison", "pie chart",
-        "bar chart", "line graph", "scatter plot", "histogram",
-    ])
+    descriptions.extend(
+        [
+            "graph",
+            "plot",
+            "visualization",
+            "data",
+            "figure",
+            "chart",
+            "diagram",
+            "illustration",
+            "statistical",
+            "analysis",
+            "comparison",
+            "pie chart",
+            "bar chart",
+            "line graph",
+            "scatter plot",
+            "histogram",
+        ]
+    )
 
     return " ".join(descriptions)
 
@@ -105,21 +167,33 @@ def extract_figure_context(page_text, chart_region, context_window=300):
     fig_matches = list(re.finditer(fig_pattern, page_text, re.IGNORECASE))
 
     if fig_matches:
-        return " ".join([
-            page_text[max(0, m.start() - context_window // 2):min(len(page_text), m.end() + context_window // 2)].strip()
-            for m in fig_matches
-        ])
+        return " ".join(
+            [
+                page_text[
+                    max(0, m.start() - context_window // 2) : min(
+                        len(page_text), m.end() + context_window // 2
+                    )
+                ].strip()
+                for m in fig_matches
+            ]
+        )
 
     words = page_text.split()
     total_words = len(words)
-    return " ".join(words[max(0, total_words // 2 - context_window // 2):][:context_window])
+    return " ".join(
+        words[max(0, total_words // 2 - context_window // 2) :][:context_window]
+    )
 
 
 def create_enhanced_chart_content(chart, page_text, page_number, chart_index=0):
-    enhanced_chart = enhance_chart_with_figure_data(chart, page_text, page_number, chart_index)
+    enhanced_chart = enhance_chart_with_figure_data(
+        chart, page_text, page_number, chart_index
+    )
     content_parts = []
 
-    chart_text = [item["text"] for item in enhanced_chart.get("raw_text", []) if item.get("text")]
+    chart_text = [
+        item["text"] for item in enhanced_chart.get("raw_text", []) if item.get("text")
+    ]
     if chart_text:
         content_parts.append(" ".join(chart_text))
 
@@ -135,7 +209,9 @@ def create_enhanced_chart_content(chart, page_text, page_number, chart_index=0):
     if enhanced_chart.get("figure_numbers"):
         content_parts.append(f"Figure {', '.join(enhanced_chart['figure_numbers'])}")
     if enhanced_chart.get("figure_descriptions"):
-        content_parts.append(f"Figure description: {' '.join(enhanced_chart['figure_descriptions'])}")
+        content_parts.append(
+            f"Figure description: {' '.join(enhanced_chart['figure_descriptions'])}"
+        )
 
     return " ".join(content_parts), enhanced_chart
 
@@ -214,6 +290,7 @@ def process_pdf(pdf):
             pdf_path = pdf
 
         pdf_pages = extract_pdf_content(pdf_path)
+        print("pdf pages", pdf_pages)
         documents = []
 
         for page in pdf_pages:
@@ -227,64 +304,81 @@ def process_pdf(pdf):
 
             for i, chunk in enumerate(text_chunks):
                 if chunk.strip():
-                    documents.append(Document(
-                        page_content=chunk.strip(),
-                        metadata={
-                            "page": page_number,
-                            "chunk_index": i,
-                            "chunk_type": "text",
-                            "has_chart": bool(page["charts"]),
-                            "source_pdf": pdf,
-                            "figure_data": figure_data,
-                        },
-                    ))
+                    documents.append(
+                        Document(
+                            page_content=chunk.strip(),
+                            metadata={
+                                "page": page_number,
+                                "chunk_index": i,
+                                "chunk_type": "text",
+                                "has_chart": bool(page["charts"]),
+                                "source_pdf": pdf,
+                                "figure_data": figure_data,
+                            },
+                        )
+                    )
 
             for chart_idx, chart in enumerate(page["charts"]):
                 enhanced_content, enhanced_chart = create_enhanced_chart_content(
                     chart, raw_text, page_number, chart_idx
                 )
-                region = list(enhanced_chart["region"]) if isinstance(enhanced_chart["region"], tuple) else enhanced_chart["region"]
+                region = (
+                    list(enhanced_chart["region"])
+                    if isinstance(enhanced_chart["region"], tuple)
+                    else enhanced_chart["region"]
+                )
 
-                documents.append(Document(
-                    page_content=enhanced_content,
-                    metadata={
-                        "page": page_number,
-                        "image_path": enhanced_chart["image_path"],
-                        "region": region,
-                        "labels": enhanced_chart.get("labels"),
-                        "values": enhanced_chart.get("values"),
-                        "title": enhanced_chart.get("title"),
-                        "source_pdf": enhanced_chart["source_pdf"],
-                        "chunk_index": f"chart_{chart_idx}",
-                        "chunk_type": "chart",
-                        "chart_description": generate_enhanced_chart_description(enhanced_chart),
-                        "figure_numbers": enhanced_chart.get("figure_numbers"),
-                        "figure_titles": enhanced_chart.get("figure_titles"),
-                        "figure_descriptions": enhanced_chart.get("figure_descriptions"),
-                        "detected_chart_types": enhanced_chart.get("detected_chart_types"),
-                        "data_mentioned": enhanced_chart.get("data_mentioned"),
-                    },
-                ))
+                documents.append(
+                    Document(
+                        page_content=enhanced_content,
+                        metadata={
+                            "page": page_number,
+                            "image_path": enhanced_chart["image_path"],
+                            "region": region,
+                            "labels": enhanced_chart.get("labels"),
+                            "values": enhanced_chart.get("values"),
+                            "title": enhanced_chart.get("title"),
+                            "source_pdf": enhanced_chart["source_pdf"],
+                            "chunk_index": f"chart_{chart_idx}",
+                            "chunk_type": "chart",
+                            "chart_description": generate_enhanced_chart_description(
+                                enhanced_chart
+                            ),
+                            "figure_numbers": enhanced_chart.get("figure_numbers"),
+                            "figure_titles": enhanced_chart.get("figure_titles"),
+                            "figure_descriptions": enhanced_chart.get(
+                                "figure_descriptions"
+                            ),
+                            "detected_chart_types": enhanced_chart.get(
+                                "detected_chart_types"
+                            ),
+                            "data_mentioned": enhanced_chart.get("data_mentioned"),
+                        },
+                    )
+                )
 
                 if len(raw_text.strip()) > 100:
                     context_content = f"Chart context from page {page_number}: {raw_text[:800]}... This page contains a chart at region {region}."
                     if enhanced_chart.get("figure_numbers"):
                         context_content += f" Referenced as Figure {', '.join(enhanced_chart['figure_numbers'])}."
 
-                    documents.append(Document(
-                        page_content=context_content,
-                        metadata={
-                            "page": page_number,
-                            "related_chart": enhanced_chart["image_path"],
-                            "chunk_type": "chart_context",
-                            "source_pdf": pdf,
-                            "chunk_index": f"context_chart_{chart_idx}",
-                            "figure_data": figure_data,
-                        },
-                    ))
-
+                    documents.append(
+                        Document(
+                            page_content=context_content,
+                            metadata={
+                                "page": page_number,
+                                "image_path": enhanced_chart["image_path"],
+                                "chunk_type": "chart_context",
+                                "source_pdf": pdf,
+                                "chunk_index": f"context_chart_{chart_idx}",
+                                "figure_data": figure_data,
+                            },
+                        )
+                    )
         Store(documents)
+        # print("documents",documents)
 
     except Exception as e:
         import traceback
+
         traceback.print_exc()

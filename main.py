@@ -139,6 +139,7 @@ if prompt := st.chat_input("What is up?"):
                 st.markdown(ask)
             st.session_state.awaiting_image_consent = True
             st.session_state.pending_image_paths = image_paths
+            print("image paths appended", image_paths)
             st.session_state.pending_image_contexts = image_contexts
 
 # Sidebar for PDF upload

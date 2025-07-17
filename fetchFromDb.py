@@ -50,4 +50,5 @@ def fetch_chunk_from_db(input_query, k=5):
         "total_results": len(results),
     }
 
-print(fetch_chunk_from_db("- Data are shown for three simulated samples (n = 30) from normal (Groups 1 and 2) and gamma (Group 3) distributions.A: Bar graphs with standard deviation bars are inadequate. B: Box plots adequately describe the data distribution and highlight an outlier. C: Dot plots are also adequate to describe data. The horizontal lines in this graph represent the means."))
+
+# print("result of db",fetch_chunk_from_db(" A Multiple Pie Chart: Share of Document Types Assigned"))

@@ -12,8 +12,3 @@ def Store(pages):
     except Exception as e:
         print(f"Error occurred while storing vector: {e}")
         return False
-
-
-# results = vector_store_from_client.similarity_search("what is piechart", k=3)
-
-# print("result", results)
