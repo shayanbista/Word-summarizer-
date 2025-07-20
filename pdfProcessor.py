@@ -3,36 +3,7 @@ import re
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 from fileProcessor import extract_pdf_content
-from vector_store import Store
-
-
-# def match_chart_to_figure(chart, figure_data, chart_index):
-#     matched_data = {
-#         "figure_numbers": [],
-#         "figure_titles": [],
-#         "figure_descriptions": [],
-#         "chart_types": [],
-#         "data_mentioned": figure_data.get("data_mentioned", []),
-#     }
-
-#     if len(figure_data["figure_numbers"]) > chart_index:
-#         matched_data["figure_numbers"] = [figure_data["figure_numbers"][chart_index]]
-#     if len(figure_data["figure_titles"]) > chart_index:
-#         matched_data["figure_titles"] = [figure_data["figure_titles"][chart_index]]
-#     if len(figure_data["figure_descriptions"]) > chart_index:
-#         matched_data["figure_descriptions"] = [figure_data["figure_descriptions"][chart_index]]
-
-#     if figure_data["chart_types"]:
-#         if len(figure_data["figure_descriptions"]) > chart_index:
-#             description = figure_data["figure_descriptions"][chart_index].lower()
-#             matched_types = [ct for ct in figure_data["chart_types"] if ct in description]
-#             matched_data["chart_types"] = matched_types if matched_types else [figure_data["chart_types"][0]]
-#         elif len(figure_data["chart_types"]) > chart_index:
-#             matched_data["chart_types"] = [figure_data["chart_types"][chart_index]]
-#         else:
-#             matched_data["chart_types"] = [figure_data["chart_types"][0]]
-
-#     return matched_data
+from vectorStore import Store
 
 
 def match_chart_to_figure(chart, figure_data, chart_index):

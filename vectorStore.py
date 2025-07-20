@@ -1,7 +1,7 @@
 from uuid import uuid4
 from langchain_core.documents import Document as LCDocument
 from langchain_community.vectorstores.utils import filter_complex_metadata
-from vector_db import vector_store_from_client
+from vectorDb import vector_store_from_client
 
 
 def Store(pages):

@@ -1,4 +1,4 @@
-from vector_db import vector_store_from_client
+from vectorDb import vector_store_from_client
 
 
 def fetch_chunk_from_db(input_query, k=5):
@@ -49,6 +49,3 @@ def fetch_chunk_from_db(input_query, k=5):
         "contexts": contexts,
         "total_results": len(results),
     }
-
-
-# print("result of db",fetch_chunk_from_db(" A Multiple Pie Chart: Share of Document Types Assigned"))
