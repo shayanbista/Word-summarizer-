@@ -7,7 +7,6 @@ def fetch_chunk_from_db(input_query, k=5):
     """
     results = vector_store_from_client.similarity_search(input_query, k=k)
 
-    # Categorize results
     charts = []
     texts = []
     contexts = []

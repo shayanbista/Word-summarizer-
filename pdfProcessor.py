@@ -15,7 +15,7 @@ def match_chart_to_figure(chart, figure_data, chart_index):
         "data_mentioned": figure_data.get("data_mentioned", []),
     }
 
-    # Match figure number, title, and description based on index
+    
     if chart_index < len(figure_data["figure_numbers"]):
         matched_data["figure_numbers"] = [figure_data["figure_numbers"][chart_index]]
 
@@ -27,7 +27,6 @@ def match_chart_to_figure(chart, figure_data, chart_index):
             figure_data["figure_descriptions"][chart_index]
         ]
 
-    # Match chart type from figure description if possible
     if figure_data["chart_types"]:
         if chart_index < len(figure_data["figure_descriptions"]):
             description = figure_data["figure_descriptions"][chart_index].lower()
@@ -261,7 +260,6 @@ def process_pdf(pdf):
             pdf_path = pdf
 
         pdf_pages = extract_pdf_content(pdf_path)
-        print("pdf pages", pdf_pages)
         documents = []
 
         for page in pdf_pages:
@@ -347,7 +345,6 @@ def process_pdf(pdf):
                         )
                     )
         Store(documents)
-        # print("documents",documents)
 
     except Exception as e:
         import traceback
